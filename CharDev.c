@@ -62,6 +62,13 @@ typedef struct _CharData
 
 CharData data_drv={NULL, 0};
 
+static char* dev_devnode(struct device *dev, umode_t *mode)
+{
+    if (!mode) return NULL;
+    if (MAJOR(dev->devt) == 300) *mode = 0666;
+    return NULL;
+}
+
 static int probe_module (void)
 {
 	int status;
@@ -70,13 +77,13 @@ static int probe_module (void)
 	status = register_chrdev_region(first, count, DEVICE_NAME);
 
 	char_class = class_create(THIS_MODULE, "mychardrv");
+	char_class->devnode = dev_devnode;
 	device_create(char_class, NULL, first, "%s", "mychardev");
 
 	 	 if (status < 0 )
 		 {
 		  printk(KERN_INFO "Registering the character device failed with %d\n", major);
 		  return -EINVAL;
-
 		 }
 
 	char_dev=cdev_alloc();
@@ -132,7 +139,6 @@ static ssize_t read(struct file *f, char __user *ptr, size_t size, loff_t *pos)
 	*pos += nbytes;
 
 	return nbytes;
-
 
 }
 
