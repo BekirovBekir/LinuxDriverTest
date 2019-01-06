@@ -19,6 +19,8 @@
 #include <linux/device.h>
 #include <linux/kdev_t.h>
 #include <asm/io.h>
+#include <asm-generic/ioctl.h>
+#include <asm/ioctls.h>
 
 
 
@@ -44,6 +46,7 @@ static ssize_t read(struct file *, char __user *, size_t, loff_t *);
 static ssize_t write(struct file *, const char __user *, size_t, loff_t *);
 static int open(struct inode *, struct file *);
 static int release(struct inode *, struct file *);
+static long dev_ioctl( struct file *f, unsigned int cmd, unsigned long arg );
 
 static struct file_operations fops =
  {
@@ -51,7 +54,8 @@ static struct file_operations fops =
   .read = read,
   .write =write,
   .open = open,
-  .release = release
+  .release = release,
+  .unlocked_ioctl = dev_ioctl
  };
 
 typedef struct _CharData
@@ -59,6 +63,12 @@ typedef struct _CharData
 	char* buf_ptr;
 	int data;
 }CharData;
+
+typedef struct _IoctlStruct
+{
+	int param;
+	int status;
+}IoctlStruct;
 
 CharData data_drv={NULL, 0};
 
@@ -199,6 +209,29 @@ static int release(struct inode *node, struct file *f)
 
 	printk(KERN_INFO "%s - Devices count %d \n\r", __FUNCTION__, counter);
 	return 0;
+}
+
+static long dev_ioctl( struct file *f, unsigned int cmd, unsigned long arg )
+{
+#define IOCTL_GET_STRING _IOR('r', 1, IoctlStruct)
+
+	IoctlStruct ioctl_data={0x31,0x32};
+
+	   switch(cmd)
+	   {
+		  case IOCTL_GET_STRING:
+			 if( copy_to_user( (IoctlStruct*)arg, &ioctl_data, _IOC_SIZE( cmd ) ) )
+			 {
+				 printk(KERN_INFO "%s - IOCTL_GET_STRING ERROR\n\r", __FUNCTION__);
+				 return -EFAULT;
+			 }
+			 printk(KERN_INFO "%s - IOCTL_GET_STRING\n\r", __FUNCTION__);
+			 break;
+		  default:
+			 printk(KERN_INFO "%s - IOCTL ERROR\n\r", __FUNCTION__);
+			 return -ENOTTY;
+	   }
+   return 0;
 }
 
 module_init(module_start);
